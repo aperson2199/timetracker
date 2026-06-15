@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Time Tracker</title>
+    <style>
+        :root {
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-color: #1c1c1e;
+            --primary: #007aff;
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --border-color: #e5e5ea;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 90px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        h1 { font-size: 26px; font-weight: 700; margin-bottom: 15px; }
+        h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;}
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button.secondary { background-color: #e5e5ea; color: #1c1c1e; }
+        button.success { background-color: var(--success); }
+        button.danger { background-color: var(--danger); }
+
+        .toggle-container { display: flex; justify-content: space-between; align-items: center; }
+        
+        .switch { position: relative; display: inline-block; width: 51px; height: 31px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e5e5ea; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 27px; width: 27px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .current-card { border: 2px solid var(--primary); background: #fbfdff; }
+        .current-status-text { font-size: 15px; margin-bottom: 12px; font-weight: 500;}
+
+        .log-item { display: flex; flex-direction: column; border-bottom: 1px solid var(--border-color); padding: 12px 0; position: relative; }
+        .log-item:last-child { border-bottom: none; }
+        .log-header { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
+        .log-times { font-size: 15px; color: #3a3a3c; }
+        .pending { color: var(--warning); font-style: italic; font-weight: 600; }
+
+        .actions { margin-top: 8px; display: flex; gap: 8px; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 6px; }
+
+        .selectable .log-item { padding-left: 35px; cursor: pointer; }
+        .checkbox-container { display: none; position: absolute; left: 0; top: 14px; }
+        .selectable .checkbox-container { display: block; }
+        .checkbox-container input { width: 20px; height: 20px; }
+
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #666; font-weight: 500;}
+        .form-group input { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-size: 15px;}
+
+        .edit-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; background: #fcfcfd; padding: 8px; border-radius: 8px; border: 1px dashed #ccc;}
+
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 65px;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 200;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #8e8e93;
+            font-size: 11px;
+            font-weight: 500;
+            text-decoration: none;
+            width: 50%;
+            height: 100%;
+            justify-content: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tab-item.active { color: var(--primary); }
+        .tab-icon { font-size: 22px; margin-bottom: 2px; }
+        .share-banner { position: fixed; bottom: 65px; left: 0; right: 0; background: white; padding: 12px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-around; z-index: 100; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- TAB 1: TRACKER TAB -->
+    <div id="tab-tracker-content">
+        <h1>Time Tracker</h1>
+        
+        <!-- ISOLATED CURRENT ENTRY CARD -->
+        <h3>Current Active Entry</h3>
+        <div class="card current-card">
+            <div class="current-status-text" id="currentStatusDisplay">
+                No active timing session for today.
+            </div>
+            <div class="form-group grid-2" style="margin-bottom: 12px;">
+                <div>
+                    <label>Manual/Current Start</label>
+                    <input type="time" id="currentStartInput" onchange="updateCurrentFromInputs()">
+                </div>
+                <div>
+                    <label>Manual/Current End</label>
+                    <input type="time" id="currentEndInput" onchange="updateCurrentFromInputs()">
+                </div>
+            </div>
+            <div class="grid-2" style="margin-bottom: 12px;">
+                <button onclick="punchStart()">Punch Start</button>
+                <button onclick="punchEnd()" class="success">Punch End</button>
+            </div>
+            <button id="submitCurrentBtn" style="width: 100%; background-color: #5856d6;" onclick="submitCurrentEntry()">Submit Log to History</button>
+        </div>
+
+        <!-- RETROACTIVE MANUAL ADD CARD -->
+        <h3>Add Forgotten Past Log</h3>
+        <div class="card">
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="manualDate">
+            </div>
+            <div class="grid-2 form-group">
+                <div>
+                    <label>Start Time</label>
+                    <input type="time" id="manualStart">
+                </div>
+                <div>
+                    <label>End Time</label>
+                    <input type="time" id="manualEnd">
+                </div>
+            </div>
+            <button style="width: 100%" class="secondary" onclick="addManualPastLog()">Add Log to Database</button>
+        </div>
+    </div>
+
+    <!-- TAB 2: DATABASE HISTORY TAB -->
+    <div id="tab-history-content" class="hidden">
+        <h1>Log History</h1>
+
+        <div class="card toggle-container" style="margin-bottom: 15px;">
+            <span style="font-weight: 500;">24-Hour Time Format</span>
+            <label class="switch">
+                <input type="checkbox" id="formatToggle" onchange="toggleFormat()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <h3>Database Records</h3>
+            <div style="display: flex; gap: 6px;">
+                <button id="selectAllBtn" class="secondary btn-sm hidden" onclick="toggleSelectAll()">Select All</button>
+                <button id="selectModeBtn" class="secondary btn-sm" onclick="toggleSelectMode()">Select</button>
+            </div>
+        </div>
+
+        <div class="card" id="logListContainer">
+            <div id="logList"></div>
+        </div>
+    </div>
+
+</div>
+
+<div id="shareBanner" class="share-banner hidden">
+    <button class="btn-sm secondary" onclick="cancelSelection()">Cancel</button>
+    <button class="btn-sm" onclick="shareData('copy')">Copy Text</button>
+    <button class="btn-sm success" onclick="shareData('share')">Share Sheet</button>
+</div>
+
+<!-- BOTTOM NAVIGATION BAR -->
+<div class="tab-bar">
+    <div class="tab-item active" id="tab-tracker" onclick="switchTab('tracker')">
+        <span class="tab-icon">⏱️</span>
+        <span>Tracker</span>
+    </div>
+    <div class="tab-item" id="tab-history" onclick="switchTab('history')">
+        <span class="tab-icon">📂</span>
+        <span>History</span>
+    </div>
+</div>
+
+<script>
+    let database = JSON.parse(localStorage.getItem('timeDatabase')) || [];
+    let currentEntry = JSON.parse(localStorage.getItem('currentEntry')) || null;
+    let is24Hour = localStorage.getItem('is24Hour') === 'true';
+    let isSelectMode = false;
+
+    document.getElementById('formatToggle').checked = is24Hour;
+
+    function switchTab(tabName) {
+        document.getElementById('tab-tracker').classList.remove('active');
+        document.getElementById('tab-history').classList.remove('active');
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+
+        if (tabName === 'tracker') {
+            document.getElementById('tab-tracker-content').classList.remove('hidden');
+            document.getElementById('tab-history-content').classList.add('hidden');
+        } else {
+            document.getElementById('tab-tracker-content').classList.add('hidden');
+            document.getElementById('tab-history-content').classList.remove('hidden');
+        }
+    }
+
+    function saveState() {
+        database.sort((a, b) => new Date(b.date) - new Date(a.date));
+        localStorage.setItem('timeDatabase', JSON.stringify(database));
+        localStorage.setItem('currentEntry', JSON.stringify(currentEntry));
+        renderAll();
+    }
+
+    function toggleFormat() {
+        is24Hour = document.getElementById('formatToggle').checked;
+        localStorage.setItem('is24Hour', is24Hour);
+        renderAll();
+    }
+
+    function getTodayDateString() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    // Fixed dynamic scoping time display logic
+    function formatTimeDisplay(timeStr) {
+        if (!timeStr || timeStr === 'pending') return '<span class="pending">Pending</span>';
+        if (is24Hour) return timeStr;
+        
+        let [hours, minutes] = timeStr.split(':');
+        hours = parseInt(hours);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; 
+        return `${hours}:${minutes} ${ampm}`;
+    }
+
+    function getTimeStringNow() {
+        const now = new Date();
+        return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+
+    // --- TRACKER WORKFLOW LOGIC ---
+
+    function punchStart() {
+        const startInputVal = document.getElementById('currentStartInput').value;
+        if (currentEntry && currentEntry.start !== 'pending' && currentEntry.start === startInputVal) {
+            alert("Punch Start ignored: You have already filled or modified a Start Time manually.");
+            return;
+        }
+
+        const brokenLog = database.find(log => log.end === 'pending');
+        if (brokenLog) {
+            alert(`⚠️ Action Blocked!\nYou forgot to enter an end time for a previous log (${brokenLog.date}). You must manually fix or delete that pending log in History before starting a new punch.`);
+            return;
+        }
+
+        const today = getTodayDateString();
+        
+        if (!currentEntry) {
+            currentEntry = { date: today, start: 'pending', end: 'pending' };
+        }
+        
+        currentEntry.start = getTimeStringNow();
+        saveState();
+    }
+
+    function punchEnd() {
+        if (!currentEntry) {
+            alert("No active log running. Press Punch Start first or use the manual inputs.");
+            return;
+        }
+
+        const endInputVal = document.getElementById('currentEndInput').value;
+        if (currentEntry.end !== 'pending' && currentEntry.end === endInputVal) {
+            alert("Punch End ignored: You have already filled or modified an End Time manually.");
+            return;
+        }
+
+        currentEntry.end = getTimeStringNow();
+        saveState();
+    }
+
+    function updateCurrentFromInputs() {
+        const today = getTodayDateString();
+        const startVal = document.getElementById('currentStartInput').value;
+        const endVal = document.getElementById('currentEndInput').value;
+
+        if (!currentEntry) {
+            currentEntry = { date: today, start: 'pending', end: 'pending' };
+        }
+
+        currentEntry.start = startVal || 'pending';
+        currentEntry.end = endVal || 'pending';
+        saveState();
+    }
+
+    function submitCurrentEntry() {
+        if (!currentEntry || (currentEntry.start === 'pending' && currentEntry.end === 'pending')) {
+            alert("Cannot submit an empty active log entry.");
+            return;
+        }
+
+        database.unshift({ ...currentEntry });
+        currentEntry = null; 
+        saveState();
+        alert("Active log successfully committed to History database!");
+    }
+
+    function addManualPastLog() {
+        const mDate = document.getElementById('manualDate').value;
+        const mStart = document.getElementById('manualStart').value;
+        const mEnd = document.getElementById('manualEnd').value;
+
+        if (!mDate) {
+            alert("Please pick a valid calendar date.");
+            return;
+        }
+
+        const logPayload = {
+            date: mDate,
+            start: mStart || 'pending',
+            end: mEnd || 'pending'
+        };
+
+        database.push(logPayload);
+        saveState();
+
+        document.getElementById('manualDate').value = '';
+        document.getElementById('manualStart').value = '';
+        document.getElementById('manualEnd').value = '';
+        alert("Past log stored successfully!");
+    }
+
+    // --- EDIT / DELETE FUNCTIONS ---
+
+    function toggleEdit(index) {
+        document.getElementById(`edit-fields-${index}`).classList.toggle('hidden');
+    }
+
+    function saveEdit(index) {
+        const newStart = document.getElementById(`start-input-${index}`).value;
+        const newEnd = document.getElementById(`end-input-${index}`).value;
+        
+        database[index].start = newStart || 'pending';
+        database[index].end = newEnd || 'pending';
+        
+        saveState();
+    }
+
+    function deleteLog(index) {
+        if(confirm("Permanently erase this entry from log history?")) {
+            database.splice(index, 1);
+            saveState();
+        }
+    }
+
+    // --- RANGE SELECT & SHARING ---
+
+    function toggleSelectMode() {
+        isSelectMode = !isSelectMode;
+        const container = document.getElementById('logListContainer');
+        const shareBanner = document.getElementById('shareBanner');
+        const selectBtn = document.getElementById('selectModeBtn');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+
+        if (isSelectMode) {
+            container.classList.add('selectable');
+            shareBanner.classList.remove('hidden');
+            selectAllBtn.classList.remove('hidden');
+            selectBtn.innerText = "Done";
+            updateSelectAllButtonText();
+        } else {
+            cancelSelection();
+        }
+    }
+
+    function cancelSelection() {
+        isSelectMode = false;
+        document.getElementById('logListContainer').classList.remove('selectable');
+        document.getElementById('shareBanner').classList.add('hidden');
+        document.getElementById('selectAllBtn').classList.add('hidden');
+        document.getElementById('selectModeBtn').innerText = "Select";
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+    }
+
+    // New "Select All / Unselect All" functionality
+    function toggleSelectAll() {
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+        updateSelectAllButtonText();
+    }
+
+    function updateSelectAllButtonText() {
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        if (checkboxes.length === 0) return;
+        
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        document.getElementById('selectAllBtn').innerText = allChecked ? "Unselect All" : "Select All";
+    }
+
+    function generateShareText() {
+        const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+        if (checkboxes.length === 0) {
+            alert("No log rows were selected.");
+            return null;
+        }
+
+        let output = "📋 EXTRACTED TIME LOGS:\n\n";
+        checkboxes.forEach(cb => {
+            const item = database[cb.dataset.index];
+            output += `Date: ${item.date}\n`;
+            output += `Start: ${item.start === 'pending' ? 'Pending' : formatTimeDisplay(item.start)}\n`;
+            output += `End: ${item.end === 'pending' ? 'Pending' : formatTimeDisplay(item.end)}\n`;
+            output += `-------------------\n`;
+        });
+        return output;
+    }
+
+    async function shareData(mode) {
+        const text = generateShareText();
+        if (!text) return;
+
+        if (mode === 'copy') {
+            try {
+                await navigator.clipboard.writeText(text);
+                alert("Text parsed and copied to clipboard!");
+            } catch (err) {
+                alert("Clipboard permissions error.");
+            }
+        } else if (mode === 'share') {
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: 'Work Logs', text: text });
+                } catch (err) { console.log("Share sheet dismissed."); }
+            } else {
+                alert("Native iOS Share Sheet unavailable. Copied to Clipboard.");
+                await navigator.clipboard.writeText(text);
+            }
+        }
+        cancelSelection();
+    }
+
+    // --- RENDERING ---
+
+    function renderAll() {
+        const statusText = document.getElementById('currentStatusDisplay');
+        const startInput = document.getElementById('currentStartInput');
+        const endInput = document.getElementById('currentEndInput');
+
+        if (currentEntry) {
+            statusText.innerHTML = `<strong>Status:</strong> Staging live entry for <strong>${currentEntry.date}</strong>.<br>` + 
+                                  `Start: ${formatTimeDisplay(currentEntry.start)} | End: ${formatTimeDisplay(currentEntry.end)}`;
+            startInput.value = currentEntry.start !== 'pending' ? currentEntry.start : '';
+            endInput.value = currentEntry.end !== 'pending' ? currentEntry.end : '';
+        } else {
+            statusText.innerHTML = `Status: No active staged log. Click <em>Punch Start</em> or type above to begin a session for today.`;
+            startInput.value = '';
+            endInput.value = '';
+        }
+
+        const logList = document.getElementById('logList');
+        if (database.length === 0) {
+            logList.innerHTML = '<p style="text-align:center; color:#8e8e93; font-size:14px; margin: 20px 0;">The main database is completely empty.</p>';
+            return;
+        }
+
+        logList.innerHTML = database.map((log, index) => {
+            return `
+                <div class="log-item">
+                    <div class="checkbox-container">
+                        <input type="checkbox" class="row-checkbox" data-index="${index}" onchange="updateSelectAllButtonText()">
+                    </div>
+                    <div class="log-header">
+                        <span>${log.date}</span>
+                    </div>
+                    <div class="log-times">
+                        Start: ${formatTimeDisplay(log.start)} | End: ${formatTimeDisplay(log.end)}
+                    </div>
+                    <div class="actions">
+                        <button class="btn-sm secondary" onclick="toggleEdit(${index})">Edit</button>
+                        <button class="btn-sm secondary" style="color:var(--danger);" onclick="deleteLog(${index})">Delete</button>
+                    </div>
+                    
+                    <div id="edit-fields-${index}" class="edit-fields hidden">
+                        <div>
+                            <label>Start</label>
+                            <input type="time" id="start-input-${index}" value="${log.start !== 'pending' ? log.start : ''}">
+                        </div>
+                        <div>
+                            <label>End</label>
+                            <input type="time" id="end-input-${index}" value="${log.end !== 'pending' ? log.end : ''}">
+                        </div>
+                        <button class="btn-sm success" style="grid-column: span 2; margin-top:4px;" onclick="saveEdit(${index})">Save Changes</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    renderAll();
+</script>
+
+</body>
+</html>
