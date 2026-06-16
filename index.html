@@ -289,13 +289,10 @@
         ehours = parseInt(ehours);
         eminutes = parseInt(eminutes);
 
-        sminutes = (sminutes/60).toFixed(2);
-        shours = shours + sminutes;
+        shours = shours + (sminutes/60);
+        ehours = ehours + (eminutes/60);
 
-        eminutes = (eminutes/60).toFixed(2);
-        ehours = ehours + eminutes;
-
-        return `${ehours - shours}`;
+        return `${(ehours - shours).toFixed(2)}`;
     }
 
     function getTimeStringNow() {
@@ -478,7 +475,7 @@
             output += `Start: ${item.start === 'pending' ? 'Pending' : formatTimeDisplay(item.start)}\n`;
             output += `End: ${item.end === 'pending' ? 'Pending' : formatTimeDisplay(item.end)}\n`;
             output += `Hours: ${
-                time.start === 'pending' || time.end === 'pending' 
+                item.start === 'pending' || item.end === 'pending' 
                     ? 'Pending'
                     : getFormattedDuration(item.start, item.end)
                 }\n`
